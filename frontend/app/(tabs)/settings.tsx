@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { Text, useTheme, Surface } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, Alert, Linking } from 'react-native';
+import { Text, useTheme, Surface, Button } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -8,6 +8,7 @@ import { useThemeStore } from '../../src/store/themeStore';
 import { useEventStore } from '../../src/store/eventStore';
 import { useTaskStore } from '../../src/store/taskStore';
 import { ThemeMode } from '../../src/types';
+import { exportBackup, importBackup, ImportMode } from '../../src/utils/backup';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -16,6 +17,10 @@ export default function SettingsScreen() {
   const setMode = useThemeStore((s) => s.setMode);
   const events = useEventStore((s) => s.events);
   const tasks = useTaskStore((s) => s.tasks);
+  const loadEvents = useEventStore((s) => s.load);
+  const loadTasks = useTaskStore((s) => s.load);
+
+  const [busy, setBusy] = useState(false);
 
   function confirmReset() {
     Alert.alert(
@@ -27,7 +32,6 @@ export default function SettingsScreen() {
           text: 'Tout effacer',
           style: 'destructive',
           onPress: async () => {
-            // Clear via stores' delete loops
             for (const e of events) {
               await useEventStore.getState().deleteEvent(e.id);
             }
@@ -38,6 +42,56 @@ export default function SettingsScreen() {
         },
       ]
     );
+  }
+
+  async function handleExport() {
+    setBusy(true);
+    const res = await exportBackup();
+    setBusy(false);
+    Alert.alert(res.ok ? 'Sauvegarde' : 'Erreur', res.message);
+  }
+
+  function chooseImportMode() {
+    Alert.alert(
+      'Importer une sauvegarde',
+      'Comment souhaitez-vous gérer vos données actuelles ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Fusionner', onPress: () => doImport('merge') },
+        { text: 'Tout remplacer', style: 'destructive', onPress: () => confirmReplaceImport() },
+      ]
+    );
+  }
+
+  function confirmReplaceImport() {
+    Alert.alert(
+      'Remplacer toutes les données ?',
+      "Vos événements et tâches actuels seront définitivement écrasés par le contenu du fichier.",
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Remplacer', style: 'destructive', onPress: () => doImport('replace') },
+      ]
+    );
+  }
+
+  async function doImport(im: ImportMode) {
+    setBusy(true);
+    const res = await importBackup(im);
+    if (res.ok) {
+      await Promise.all([loadEvents(), loadTasks()]);
+    }
+    setBusy(false);
+    if (res.cancelled) return;
+    Alert.alert(
+      res.ok ? 'Import réussi' : 'Erreur',
+      res.ok
+        ? `${res.importedEvents ?? 0} événement(s) et ${res.importedTasks ?? 0} tâche(s) traitées.`
+        : res.message
+    );
+  }
+
+  function openMail() {
+    Linking.openURL('mailto:lemaitreazzoug@gmail.com').catch(() => {});
   }
 
   const themeOptions: { id: ThemeMode; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
@@ -61,6 +115,7 @@ export default function SettingsScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Apparence */}
         <SectionTitle icon="palette" label="Apparence" />
         <Animated.View entering={FadeInUp.delay(60)}>
           <Surface
@@ -108,49 +163,94 @@ export default function SettingsScreen() {
           </Surface>
         </Animated.View>
 
-        <SectionTitle icon="bell-outline" label="Notifications & rappels" />
+        {/* Données — Export / Import */}
+        <SectionTitle icon="database-cog-outline" label="Données" />
         <Animated.View entering={FadeInUp.delay(120)}>
-          <InfoRow
-            icon="bell-ring-outline"
-            title="Notifications locales"
-            subtitle="Activées automatiquement à la création d'un événement avec rappels."
-          />
-          <InfoRow
-            icon="alarm"
-            title="Alarmes exactes"
-            subtitle="Disponibles sur Android avec autorisation. Demandées au premier événement avec alarme."
-          />
+          <Surface
+            elevation={1}
+            style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}
+          >
+            <View style={styles.dataRow}>
+              <View style={[styles.dataIcon, { backgroundColor: '#DCFCE7' }]}>
+                <MaterialCommunityIcons name="file-export-outline" size={22} color="#16A34A" />
+              </View>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text variant="titleSmall" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+                  Exporter la base
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+                  {events.length} événement(s) · {tasks.length} tâche(s) — fichier JSON
+                </Text>
+              </View>
+              <Button
+                mode="contained"
+                compact
+                onPress={handleExport}
+                disabled={busy || (events.length === 0 && tasks.length === 0)}
+                testID="export-data"
+                icon="download"
+              >
+                Exporter
+              </Button>
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: theme.colors.outline }]} />
+
+            <View style={styles.dataRow}>
+              <View style={[styles.dataIcon, { backgroundColor: '#E0E7FF' }]}>
+                <MaterialCommunityIcons name="file-import-outline" size={22} color="#4F46E5" />
+              </View>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text variant="titleSmall" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+                  Importer / Ouvrir
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+                  Fusionner ou remplacer depuis un fichier .json
+                </Text>
+              </View>
+              <Button
+                mode="contained-tonal"
+                compact
+                onPress={chooseImportMode}
+                disabled={busy}
+                testID="import-data"
+                icon="upload"
+              >
+                Ouvrir
+              </Button>
+            </View>
+          </Surface>
         </Animated.View>
 
-        <SectionTitle icon="cloud-outline" label="Synchronisation" />
-        <Animated.View entering={FadeInUp.delay(180)}>
-          <InfoRow
-            icon="harddisk"
-            title="Stockage local"
-            subtitle="Vos données sont enregistrées sur cet appareil."
-          />
-          <InfoRow
-            icon="cloud-sync-outline"
-            title="Sauvegarde cloud"
-            subtitle="Bientôt disponible — synchronisez votre agenda entre vos appareils."
-            badge="Bientôt"
-          />
-        </Animated.View>
-
+        {/* À propos */}
         <SectionTitle icon="information-outline" label="À propos" />
-        <Animated.View entering={FadeInUp.delay(240)}>
-          <InfoRow icon="school" title="MaîtrAgenda" subtitle="Agenda professionnel pour les enseignants des écoles." />
-          <InfoRow icon="counter" title="Statistiques" subtitle={`${events.length} événement(s) · ${tasks.length} tâche(s)`} />
+        <Animated.View entering={FadeInUp.delay(200)}>
+          <InfoRow
+            icon="school"
+            title="MaîtrAgenda"
+            subtitle="Agenda professionnel pour les enseignants des écoles."
+          />
+          <InfoRow
+            icon="counter"
+            title="Statistiques"
+            subtitle={`${events.length} événement(s) · ${tasks.length} tâche(s)`}
+          />
           <InfoRow icon="tag-outline" title="Version" subtitle="1.0.0" />
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(300)}>
+        {/* Danger zone */}
+        <Animated.View entering={FadeInUp.delay(260)}>
           <Pressable
             testID="reset-data"
             onPress={confirmReset}
+            disabled={events.length === 0 && tasks.length === 0}
             style={({ pressed }) => [
               styles.dangerBtn,
-              { borderColor: '#EF4444', transform: [{ scale: pressed ? 0.98 : 1 }] },
+              {
+                borderColor: '#EF4444',
+                opacity: events.length === 0 && tasks.length === 0 ? 0.5 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              },
             ]}
           >
             <MaterialCommunityIcons name="delete-outline" size={18} color="#EF4444" />
@@ -158,6 +258,46 @@ export default function SettingsScreen() {
               Effacer toutes les données
             </Text>
           </Pressable>
+        </Animated.View>
+
+        {/* Copyright */}
+        <Animated.View entering={FadeInUp.delay(320)}>
+          <View style={[styles.copyright, { borderTopColor: theme.colors.outline }]}>
+            <MaterialCommunityIcons
+              name="copyright"
+              size={16}
+              color={theme.colors.onSurfaceVariant}
+            />
+            <Text
+              variant="bodySmall"
+              style={[styles.copyrightText, { color: theme.colors.onSurfaceVariant }]}
+            >
+              Zoubir AZZOUG — Professeur des écoles — 2026
+            </Text>
+            <Pressable
+              testID="contact-mail"
+              onPress={openMail}
+              style={styles.mailRow}
+              hitSlop={8}
+            >
+              <MaterialCommunityIcons
+                name="email-outline"
+                size={14}
+                color={theme.colors.primary}
+              />
+              <Text
+                variant="bodySmall"
+                style={{
+                  color: theme.colors.primary,
+                  marginLeft: 4,
+                  fontWeight: '600',
+                  textDecorationLine: 'underline',
+                }}
+              >
+                lemaitreazzoug@gmail.com
+              </Text>
+            </Pressable>
+          </View>
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
@@ -186,8 +326,7 @@ const InfoRow: React.FC<{
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   title: string;
   subtitle?: string;
-  badge?: string;
-}> = ({ icon, title, subtitle, badge }) => {
+}> = ({ icon, title, subtitle }) => {
   const theme = useTheme();
   return (
     <Surface
@@ -198,18 +337,9 @@ const InfoRow: React.FC<{
         <MaterialCommunityIcons name={icon} size={20} color={theme.colors.onPrimaryContainer} />
       </View>
       <View style={styles.infoBody}>
-        <View style={styles.infoTitleRow}>
-          <Text variant="titleSmall" style={{ color: theme.colors.onSurface, fontWeight: '700', flex: 1 }}>
-            {title}
-          </Text>
-          {badge ? (
-            <View style={[styles.badge, { backgroundColor: theme.colors.secondaryContainer }]}>
-              <Text variant="labelSmall" style={{ color: theme.colors.onSecondaryContainer, fontWeight: '700' }}>
-                {badge}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+        <Text variant="titleSmall" style={{ color: theme.colors.onSurface, fontWeight: '700' }}>
+          {title}
+        </Text>
         {subtitle ? (
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
             {subtitle}
@@ -255,6 +385,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.2,
   },
+  dataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dataIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  divider: {
+    height: 1,
+    marginVertical: 14,
+  },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -272,16 +418,6 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   infoBody: { flex: 1 },
-  infoTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    marginLeft: 8,
-  },
   dangerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -290,5 +426,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     marginTop: 16,
+  },
+  copyright: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 24,
+    paddingBottom: 8,
+    marginTop: 24,
+    borderTopWidth: 1,
+  },
+  copyrightText: {
+    marginTop: 4,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  mailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingVertical: 4,
   },
 });
