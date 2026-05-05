@@ -196,7 +196,7 @@ export default function EventFormScreen() {
             onChangeText={setDescription}
             multiline
             numberOfLines={2}
-            left={<TextInput.Icon icon="text-subject" />}
+            left={<TextInput.Icon icon="text-box-outline" />}
             style={styles.input}
             outlineColor={theme.colors.outline}
             activeOutlineColor={theme.colors.primary}
