@@ -1,0 +1,40 @@
+{
+  "summary": "Frontend-only smoke + integration testing of MaîtrAgenda Expo web app at https://ecole-planning-pro.preview.emergentagent.com (mobile viewport 390x844). All five tabs render with correct testIDs, FAB opens /event/new, dashboard KPIs render and update, event creation persists with correct dashboard 'À venir' rendering, task creation+toggle+filters work in-memory, theme switching works, and AsyncStorage persistence of events/tasks survives a full page reload. One potential persistence issue observed for task 'done' flag and a few flows (event detail, long-press delete, conflict detection, reminders modal) were not exercised end-to-end.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Task done state persistence after reload",
+        "issue": "After toggling a task to done (filter-done counter went from 0→1, confirmed in-memory), then creating an event, then reloading the page, the task tab shows 'À faire (1) / Terminées (0)' — i.e. the done flag was not retrieved from AsyncStorage even though the task itself was. Could be a race between toggleTask's async persist and a subsequent navigation, or load() is reading a stale snapshot. Worth a deterministic re-test by toggling and reloading immediately without other actions.",
+        "affected_testIDs": ["task-toggle-{id}", "filter-done"]
+      }
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "react-native-paper TextInput (task-title, form-title, etc.)",
+        "issue": "page.fill('[data-testid=\"task-title\"] input') times out — Paper renders the actual <input> outside the testID-tagged wrapper. Workaround in tests: click the [data-testid] then use page.keyboard.type(). Not a user-facing bug, but main agent may want to also place testID on the inner input or expose a stable selector for automation."
+      }
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Verify task `done` flag persistence: write task → toggle done → hard reload → expect Terminées (1). If reproducible, ensure toggleTask awaits persist before any navigation, or call persist synchronously on web.",
+    "Optional: forward testID to underlying <input> in the react-native-paper TextInput wrappers (form-title, form-description, form-location, form-notes, task-title) so `page.fill('[data-testid=...] input')` works without keyboard fallback.",
+    "Manual / next iteration: end-to-end test of event detail screen (status menu, edit, delete confirm), long-press task delete confirm, conflict detection between two overlapping events, reminders modal selection, recurrence chip persistence."
+  ],
+  "critical_code_review_comments": [
+    "tasks.tsx onToggle is wired as `() => toggleTask(t.id)` (fire-and-forget). Combined with immediate Zustand set + async AsyncStorage write, a fast subsequent reload could in theory race the persist on slower hosts. Consider awaiting the call or using AsyncStorage's web-synchronous localStorage path explicitly.",
+    "_layout.tsx CenterFab uses Haptics inside onPress but is correctly Platform-guarded — fine.",
+    "settings.tsx confirmReset loops `await deleteEvent` per item which writes AsyncStorage N times; on large datasets this is O(N²) writes. Consider a single bulk-clear setItem call.",
+    "agenda.tsx imports `subDays` and `addDays` and uses them only in mode='jour'; `parseISO` import is used; nothing dead. OK."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "~95% (all primary flows verified; minor persistence concern on task.done)"},
+  "seed_data_creation": "Created 1 test event (TEST_Reunion_parents, category=reunion_parents) and 1 test task (TEST_Tache_1, priority=haute) via UI. Both persist in AsyncStorage. They can be cleared via Réglages → 'Effacer toutes les données'.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "App is at https://ecole-planning-pro.preview.emergentagent.com. Use viewport 390x844. Wait ~12s after first load for Metro bundle. Form/task TextInputs need keyboard.type() workaround (click the testID wrapper, then keyboard.type). Priority IDs are: faible|normale|haute|urgente (NOT 'basse'). Categories use snake_case ids like reunion_parents, conseil_maitres, etc. Routes: /(tabs)/index|agenda|tasks|settings, /event/new, /event/[id]. Untested flows: event detail screen (status menu, edit, delete confirm, conflict banner), tasks long-press delete, reminders modal multi-select, recurrence chips, theme=Système live toggle, full conflict detection with 2 overlapping events.",
+  "rca_of_issue": "Task done persistence (suspected): toggleTask(id) fires set() synchronously and persist() asynchronously. The Pressable's onPress is not awaited. If anything triggers a hard reload before localStorage.setItem completes (rare on web but possible during animations/route transitions), the toggle is lost. Mitigation: either await the toggle, or perform AsyncStorage.setItem before set() so the persisted value is the source of truth, or simply use a synchronous write on web."
+}
