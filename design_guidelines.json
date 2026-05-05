@@ -1,0 +1,158 @@
+{
+  "project_name": "MaîtrAgenda",
+  "domain": "Educational Productivity App",
+  "theme": "Light/Dark Toggle (Default: Light)",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "core_principles": [
+    "High legibility for calendar grids and schedules.",
+    "Tactile floating actions (FAB) over smooth scrolling lists.",
+    "Generous touch targets (min 48dp).",
+    "Material 3 aesthetics using React Native Paper.",
+    "Fluid spring/tween animations for state transitions using react-native-reanimated v3."
+  ],
+  "typography": {
+    "font_family": {
+      "heading": "Manrope",
+      "body": "Work Sans",
+      "mono": "JetBrains Mono"
+    },
+    "hierarchy": {
+      "h1": { "size": 32, "weight": "800", "tracking": -0.5, "lineHeight": 40 },
+      "h2": { "size": 24, "weight": "700", "tracking": -0.3, "lineHeight": 32 },
+      "h3": { "size": 20, "weight": "600", "tracking": -0.2, "lineHeight": 28 },
+      "body": { "size": 16, "weight": "400", "tracking": 0, "lineHeight": 24 },
+      "caption": { "size": 12, "weight": "500", "tracking": 0.2, "lineHeight": 16, "uppercase": true }
+    }
+  },
+  "colors": {
+    "light": {
+      "background": "#F9FAFB",
+      "surface": "#FFFFFF",
+      "surfaceVariant": "#F3F4F6",
+      "text": "#111827",
+      "textSecondary": "#4B5563",
+      "border": "#E5E7EB"
+    },
+    "dark": {
+      "background": "#0A0A0A",
+      "surface": "#171717",
+      "surfaceVariant": "#262626",
+      "text": "#F9FAFB",
+      "textSecondary": "#A1A1AA",
+      "border": "#27272A"
+    },
+    "primary": "#6366F1",
+    "categories": [
+      { "name": "Conseil des maîtres", "emoji": "👩‍🏫", "hex": "#6366F1" },
+      { "name": "Conseil d'école", "emoji": "🏫", "hex": "#8B5CF6" },
+      { "name": "Réunion parents", "emoji": "👨‍👩‍👧", "hex": "#EC4899" },
+      { "name": "Formation / Stage", "emoji": "📚", "hex": "#F59E0B" },
+      { "name": "Animation pédagogique", "emoji": "🎨", "hex": "#10B981" },
+      { "name": "Sortie scolaire", "emoji": "🚌", "hex": "#3B82F6" },
+      { "name": "Activité sportive / EPS", "emoji": "⚽", "hex": "#22C55E" },
+      { "name": "APC", "emoji": "🔬", "hex": "#14B8A6" },
+      { "name": "Évaluation / Bilan", "emoji": "📊", "hex": "#F97316" },
+      { "name": "Tâche administrative", "emoji": "📋", "hex": "#6B7280" },
+      { "name": "Projet de classe", "emoji": "🌟", "hex": "#EAB308" },
+      { "name": "Rendez-vous institutionnel", "emoji": "🏛️", "hex": "#DC2626" },
+      { "name": "Événement personnel", "emoji": "🏠", "hex": "#0EA5E9" },
+      { "name": "Autre", "emoji": "📌", "hex": "#A78BFA" }
+    ],
+    "priorities": {
+      "Faible": "#22C55E",
+      "Normale": "#F59E0B",
+      "Haute": "#F97316",
+      "Urgente": "#EF4444"
+    },
+    "statuses": {
+      "Prévu": { "color": "gray", "style": "normal" },
+      "Confirmé": { "color": "green", "style": "normal" },
+      "Annulé": { "color": "red", "style": "strikethrough" },
+      "Terminé": { "color": "gray", "opacity": 0.5 },
+      "Reporté": { "color": "amber", "style": "normal" }
+    }
+  },
+  "layout_and_spacing": {
+    "touch_targets": { "min_width": 48, "min_height": 48 },
+    "padding": {
+      "screen": 16,
+      "card_internal": 16,
+      "item_gap": 12
+    },
+    "border_radius": {
+      "small": 8,
+      "medium": 16,
+      "large": 24,
+      "full": 9999
+    }
+  },
+  "components": {
+    "bottom_navigation": {
+      "style": "Material 3 style with hidden labels on inactive tabs.",
+      "fab": {
+        "position": "center",
+        "elevation": 8,
+        "action": "Open 'Nouveau' modal sheet",
+        "icon": "plus"
+      }
+    },
+    "event_card": {
+      "style": "Flat with subtle 1px border. No heavy drop shadows.",
+      "layout": "Row",
+      "elements": [
+        "Left colored vertical strip (4dp width) representing the category hex.",
+        "Priority dot (6dp) next to title.",
+        "Title, Emoji, and Time.",
+        "Badges for: Conflit, Alarme, Récurrence.",
+        "Chip for 'Classe'."
+      ]
+    },
+    "calendar_views": {
+      "month": "Grid layout. Active day highlighted with primary circle. Events as colored dots.",
+      "week": "Time-blocked columns.",
+      "day": "Vertical timeline. Events are colored blocks."
+    },
+    "forms": {
+      "fields": "Each input field must have a leading dedicated icon.",
+      "style": "React Native Paper outlined text inputs."
+    }
+  },
+  "motion_and_animations": {
+    "library": "react-native-reanimated v3",
+    "transitions": [
+      { "element": "Bottom Sheet (Nouveau)", "type": "Spring", "damping": 15, "stiffness": 150 },
+      { "element": "Calendar View Switcher", "type": "Tween", "duration": 250, "easing": "EaseInOut" },
+      { "element": "List Items Entrance", "type": "FadeInUp", "stagger": 50 }
+    ]
+  },
+  "icons": {
+    "library": "@expo/vector-icons (MaterialCommunityIcons)",
+    "usage": "Use consistently across the bottom nav, form fields, and empty states."
+  },
+  "testing": {
+    "requirements": "All interactive and key informational elements MUST include a 'data-testid' attribute.",
+    "convention": "kebab-case, role-based. e.g., 'fab-new-event', 'tab-agenda', 'event-card-[id]'"
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.pexels.com/photos/8092410/pexels-photo-8092410.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "welcome_background",
+        "description": "Minimalist workspace with an open notebook. Use for the onboarding/welcome screen."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1759668358583-09cdcae2ba36?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwyfHxtaW5pbWFsaXN0JTIwbW9kZXJuJTIwb2ZmaWNlJTIwZGVzayUyMG5vdGVib29rfGVufDB8fHx8MTc3Nzk5MDk0M3ww&ixlib=rb-4.1.0&q=85",
+        "category": "empty_state",
+        "description": "Minimalist desk. Use as a background or visual for empty states (e.g., no tasks today)."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Initialize React Native Expo project with TypeScript.",
+    "Install react-native-paper, react-native-reanimated, and @react-navigation/native.",
+    "Set up a global context or Zustand store for Theme (Light/Dark) and Offline Data. Since the prompt mentioned Room (Android Native), adapt it to Expo by using expo-sqlite or WatermelonDB for local offline storage.",
+    "Implement the Bottom Navigation with a custom central FAB strictly mapping the 'Nouveau' action.",
+    "Build the EventCard exactly as described: 4dp vertical color bar, 6dp priority dot.",
+    "Ensure all interactive elements have data-testid."
+  ]
+}
