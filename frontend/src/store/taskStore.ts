@@ -44,8 +44,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const now = new Date().toISOString();
     const t: Task = { ...payload, id: uid(), createdAt: now, updatedAt: now };
     const next = [...get().tasks, t];
-    set({ tasks: next });
     await persist(next);
+    set({ tasks: next });
     return t;
   },
 
@@ -53,21 +53,21 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const next = get().tasks.map((t) =>
       t.id === id ? { ...t, done: !t.done, updatedAt: new Date().toISOString() } : t
     );
-    set({ tasks: next });
     await persist(next);
+    set({ tasks: next });
   },
 
   updateTask: async (id, payload) => {
     const next = get().tasks.map((t) =>
       t.id === id ? { ...t, ...payload, updatedAt: new Date().toISOString() } : t
     );
-    set({ tasks: next });
     await persist(next);
+    set({ tasks: next });
   },
 
   deleteTask: async (id) => {
     const next = get().tasks.filter((t) => t.id !== id);
-    set({ tasks: next });
     await persist(next);
+    set({ tasks: next });
   },
 }));
