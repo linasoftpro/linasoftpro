@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { SchoolEvent, Task } from '../types';
@@ -65,11 +65,11 @@ export async function exportBackup(): Promise<{
     }
 
     // Native: write file then share
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dir = (FileSystem as any).cacheDirectory ?? (FileSystem as any).documentDirectory;
+    const dir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
     const uri = `${dir}${fileName}`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (FileSystem as any).writeAsStringAsync(uri, json, { encoding: 'utf8' });
+    await FileSystem.writeAsStringAsync(uri, json, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
     const canShare = await Sharing.isAvailableAsync();
     if (canShare) {
       await Sharing.shareAsync(uri, {
@@ -96,8 +96,9 @@ async function readJsonFromUri(uri: string): Promise<string> {
     const res = await fetch(uri);
     return res.text();
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return await (FileSystem as any).readAsStringAsync(uri, { encoding: 'utf8' });
+  return await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
 }
 
 export type ImportMode = 'replace' | 'merge';
