@@ -235,7 +235,7 @@ export default function SettingsScreen() {
             title="Statistiques"
             subtitle={`${events.length} événement(s) · ${tasks.length} tâche(s)`}
           />
-          <InfoRow icon="tag-outline" title="Version" subtitle="1.0.0" />
+          <InfoRow icon="tag-outline" title="Version" subtitle="1.0.1" />
         </Animated.View>
 
         {/* Danger zone */}
