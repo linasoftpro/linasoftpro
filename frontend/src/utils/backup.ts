@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { SchoolEvent, Task } from '../types';
@@ -49,7 +49,7 @@ export async function exportBackup(): Promise<{
     const fileName = buildFileName();
 
     if (Platform.OS === 'web') {
-      // Trigger browser download
+      // Web: trigger browser download via Blob
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const w: any = globalThis;
       const blob = new w.Blob([json], { type: 'application/json' });
@@ -64,15 +64,17 @@ export async function exportBackup(): Promise<{
       return { ok: true, message: 'Sauvegarde téléchargée.', fileName };
     }
 
-    // Native: write file then share
-    const dir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
-    const uri = `${dir}${fileName}`;
-    await FileSystem.writeAsStringAsync(uri, json, {
-      encoding: FileSystem.EncodingType.UTF8,
-    });
+    // Native: new expo-file-system File API
+    const file = new File(Paths.cache, fileName);
+    if (file.exists) {
+      file.delete();
+    }
+    file.create();
+    file.write(json);
+
     const canShare = await Sharing.isAvailableAsync();
     if (canShare) {
-      await Sharing.shareAsync(uri, {
+      await Sharing.shareAsync(file.uri, {
         mimeType: 'application/json',
         dialogTitle: 'Exporter la sauvegarde MaîtrAgenda',
         UTI: 'public.json',
@@ -96,9 +98,8 @@ async function readJsonFromUri(uri: string): Promise<string> {
     const res = await fetch(uri);
     return res.text();
   }
-  return await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  const file = new File(uri);
+  return await file.text();
 }
 
 export type ImportMode = 'replace' | 'merge';
